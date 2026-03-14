@@ -310,6 +310,7 @@
     <div class="nav-item active" onclick="showView('dashboard');closeSidebar()"><span class="nav-icon">◈</span> Dashboard</div>
     <div class="nav-item" onclick="showView('log');closeSidebar()"><span class="nav-icon">≡</span> CPD Log</div>
     <div class="nav-item" onclick="showView('report');closeSidebar()"><span class="nav-icon">↗</span> ILM Report</div>
+    <div class="nav-item" onclick="showView('settings');closeSidebar()"><span class="nav-icon">⚙</span> Settings</div>
   </div>
   <div style="padding:12px 24px 0;border-top:1px solid rgba(255,255,255,0.1);">
     <div id="sidebar-user" style="font-size:11px;color:rgba(255,255,255,0.5);font-family:'IBM Plex Mono',monospace;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
@@ -361,7 +362,7 @@
         <div class="kpi-card">
           <div class="kpi-label">This Month</div>
           <div class="kpi-value" id="kpi-month">0</div>
-          <div class="kpi-sub">of 6 hrs target</div>
+          <div class="kpi-sub" id="kpi-month-sub">of 6 hrs target</div>
         </div>
         <div class="kpi-card red">
           <div class="kpi-label">Still Needed</div>
@@ -371,7 +372,7 @@
       </div>
 
       <div class="month-chart">
-        <div class="mc-title">Monthly Progress — 6 hrs target per month</div>
+        <div class="mc-title" id="mc-title">Monthly Progress — 6 hrs target per month</div>
         <div class="mt-months" id="month-bars"></div>
       </div>
 
@@ -425,6 +426,35 @@
       </div>
     </div>
 
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="table-wrap" style="padding:28px;max-width:500px;">
+        <div class="section-header" style="margin-bottom:20px;">
+          <span class="section-title">Settings</span>
+          <span class="section-rule"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Monthly CPD Target (hours)</label>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <input class="form-input" type="number" id="target-input" min="1" max="40" step="0.5"
+              style="max-width:120px;" placeholder="6">
+            <button class="btn btn-gold" onclick="saveTarget()">Save</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;">
+            Current target: <strong id="current-target-display">6</strong> hours per month
+          </div>
+        </div>
+
+        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--rule);">
+          <div class="form-label" style="margin-bottom:8px;">Account</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;" id="settings-email"></div>
+          <button class="btn btn-outline" onclick="signOut()">Sign out</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
 
@@ -434,6 +464,7 @@
     <div class="bn-item active" id="bn-dashboard" onclick="showView('dashboard')"><span class="bn-icon">◈</span><span>Home</span></div>
     <div class="bn-item" id="bn-log" onclick="showView('log')"><span class="bn-icon">≡</span><span>Log</span></div>
     <div class="bn-item" id="bn-report" onclick="showView('report')"><span class="bn-icon">↗</span><span>Report</span></div>
+    <div class="bn-item" id="bn-settings" onclick="showView('settings')"><span class="bn-icon">⚙</span><span>Settings</span></div>
   </div>
 </nav>
 
@@ -508,7 +539,7 @@
 </div>
 
 <script>
-const MONTHLY_TARGET = 6;
+let MONTHLY_TARGET = parseInt(localStorage.getItem("cpd_monthly_target") || "6");
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const ILM_COMPETENCIES = [
@@ -755,6 +786,9 @@ function refresh() {
   document.getElementById('sb-hours').textContent = total.toFixed(1);
   document.getElementById('sb-count').textContent = activities.length;
   document.getElementById('sb-progress').style.width = pct+'%';
+  document.getElementById('kpi-month-sub').textContent = 'of '+MONTHLY_TARGET+' hrs target';
+  document.getElementById('mc-title').textContent = 'Monthly Progress — '+MONTHLY_TARGET+' hrs target per month';
+  document.querySelector('.progress-label').textContent = 'This Month ('+MONTHLY_TARGET+' hrs target)';
   document.getElementById('kpi-hours').textContent = total.toFixed(1);
   document.getElementById('kpi-count').textContent = activities.length;
   document.getElementById('kpi-month').textContent = thisMonth.toFixed(1);
@@ -1138,12 +1172,35 @@ async function deleteActivity(id){
   await deleteFromDb(id);
 }
 
+function initSettings(){
+  document.getElementById('target-input').value = MONTHLY_TARGET;
+  document.getElementById('current-target-display').textContent = MONTHLY_TARGET;
+  if(currentUser) document.getElementById('settings-email').textContent = currentUser.email;
+}
+
+function saveTarget(){
+  const val = parseFloat(document.getElementById('target-input').value);
+  if(!val||val<0.5||val>40){alert('Please enter a target between 0.5 and 40 hours.');return;}
+  MONTHLY_TARGET = val;
+  localStorage.setItem('cpd_monthly_target', val);
+  document.getElementById('current-target-display').textContent = val;
+  // Update sidebar label
+  document.querySelector('.progress-label').textContent = 'This Month ('+val+' hrs target)';
+  refresh();
+  // Show confirmation
+  const btn = document.querySelector('#view-settings .btn-gold');
+  btn.textContent = 'Saved ✓';
+  btn.style.background = 'var(--green)';
+  setTimeout(()=>{btn.textContent='Save';btn.style.background='';},2000);
+}
+
 function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',i==={dashboard:0,log:1,report:2}[name]));
-  ['dashboard','log','report'].forEach(n=>document.getElementById('bn-'+n)?.classList.toggle('active',n===name));
-  document.getElementById('page-title').textContent={dashboard:'Dashboard',log:'CPD Log',report:'ILM Report'}[name];
+  document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',i==={dashboard:0,log:1,report:2,settings:3}[name]));
+  ['dashboard','log','report','settings'].forEach(n=>document.getElementById('bn-'+n)?.classList.toggle('active',n===name));
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',log:'CPD Log',report:'ILM Report',settings:'Settings'}[name];
+  if(name==='settings') initSettings();
 }
 
 function toggleSidebar(){
