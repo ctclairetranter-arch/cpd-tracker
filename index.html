@@ -614,7 +614,7 @@ const TYPE_LABELS = { formal:'Formal', self:'Self-Directed', work:'Work-Based', 
 const TYPE_BADGE  = { formal:'badge-formal', self:'badge-self', work:'badge-work', peer:'badge-peer' };
 
 // ── CONFIG ───────────────────────────────────────
-const ANTHROPIC_KEY = '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'; // Replace with your key from console.anthropic.com
+const ANTHROPIC_KEY = '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'; // Replace with your key from console.anthropic.com
 
 // ── SUPABASE INIT ────────────────────────────────
 const SUPABASE_URL = 'https://oazytotqhquzzmiexume.supabase.co';
@@ -1093,9 +1093,14 @@ async function saveActivity(){
     saveBtn.onclick=closeModal;
     ksbMapped=true;
   } catch(err){
-    wrap.innerHTML=`<div class="ksb-panel">
-      <div class="ksb-panel-title" style="color:var(--red);">⚠ KSB mapping unavailable</div>
-      <p style="font-size:12px;color:var(--muted);">Your activity has been saved. KSB mapping requires an internet connection to the Claude API. You can re-open and save again to retry.</p>
+    const errMsg = err.message||String(err);
+    const isKeyError = ANTHROPIC_KEY==='YOUR_ANTHROPIC_API_KEY_HERE' || ANTHROPIC_KEY==='';
+    wrap.innerHTML=`<div class="ksb-panel" style="border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.06);">
+      <div class="ksb-panel-title" style="color:var(--red);">⚠ KSB mapping failed</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${isKeyError
+        ? 'No API key found. Please add your Anthropic API key to the ANTHROPIC_KEY variable in the code.'
+        : 'Error: '+errMsg}</p>
+      <p style="font-size:11px;color:var(--muted);">Your activity has been saved. Open the browser console (F12) for more detail.</p>
     </div>`;
     saveBtn.textContent='Close';
     saveBtn.disabled=false;
@@ -1123,6 +1128,9 @@ function renderKSBPanel(ksbs, wrap){
 
 // ── AI KSB MAPPING ───────────────────────────────
 async function mapKSBs(activity){
+  if(!ANTHROPIC_KEY || ANTHROPIC_KEY==='YOUR_ANTHROPIC_API_KEY_HERE'){
+    throw new Error('API key not configured. Please add your Anthropic API key.');
+  }
   const ksbList = ALL_KSBS.map(k=>`${k.code} (${k.type}): ${k.name} — ${k.desc}`).join('\n');
 
   const prompt = `You are an expert ILM Level 5 Operations Management assessor. 
