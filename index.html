@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CPD Tracker — ILM OM Level 5</title>
+<title>CPD Tracker — ILM OM Level 5 v3</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -1160,11 +1160,23 @@ Return ONLY the JSON array, no other text.`;
     })
   });
 
-  if(!response.ok) throw new Error('API error: '+response.status);
   const data = await response.json();
+  console.log('Worker response status:', response.status);
+  console.log('Worker response data:', JSON.stringify(data).substring(0, 500));
+
+  if(!response.ok) throw new Error('API error: '+response.status+' — '+JSON.stringify(data));
+
+  if(!data.content || !data.content.length) {
+    throw new Error('Empty response from API: '+JSON.stringify(data));
+  }
+
   const text = data.content.map(c=>c.text||'').join('');
+  console.log('Raw text from API:', text.substring(0, 300));
+
   const clean = text.replace(/```json|```/g,'').trim();
-  return JSON.parse(clean);
+  const parsed = JSON.parse(clean);
+  console.log('Parsed KSBs:', parsed);
+  return parsed;
 }
 
 async function deleteActivity(id){
