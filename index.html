@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CPD Tracker — ILM OM Level 5 v3</title>
+<title>CPD Tracker — ILM OM Level 5 v5</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -264,7 +264,7 @@
 <body>
 
 <!-- AUTH SCREEN -->
-<div class="auth-screen" id="auth-screen">
+<div class="auth-screen" id="auth-screen" style="display:none;">
   <div class="auth-card">
     <div class="auth-header">
       <div class="ilm-tag">ILM OM · Level 5</div>
@@ -678,6 +678,10 @@ function showAuthMsg(msg, type) {
 
 async function signOut() {
   await sb.auth.signOut();
+  // Clear any cached session data and reload
+  localStorage.clear();
+  sessionStorage.clear();
+  location.reload();
 }
 
 // ── SESSION LISTENER ──────────────────────────────
@@ -687,6 +691,8 @@ sb.auth.onAuthStateChange(async (event, session) => {
     const name = session.user.user_metadata?.full_name || session.user.email;
     const initials = name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     document.getElementById('auth-screen').style.display = 'none';
+    const mainEl = document.querySelector('.main');
+    if(mainEl) mainEl.style.display = 'flex';
     document.getElementById('user-avatar').textContent = initials;
     document.getElementById('user-email-display').textContent = session.user.email;
     document.getElementById('sidebar-user').textContent = session.user.email;
@@ -694,7 +700,12 @@ sb.auth.onAuthStateChange(async (event, session) => {
   } else {
     currentUser = null;
     activities = [];
-    document.getElementById('auth-screen').style.display = 'flex';
+    // Show auth screen
+    const authScreen = document.getElementById('auth-screen');
+    if(authScreen) authScreen.style.display = 'flex';
+    // Hide main content
+    const mainEl = document.querySelector('.main');
+    if(mainEl) mainEl.style.display = 'none';
     refresh();
   }
 });
@@ -837,7 +848,10 @@ function renderTable(id, rows, showDel) {
       <td><span class="badge ${TYPE_BADGE[a.type]}">${TYPE_LABELS[a.type]}</span></td>
       <td style="font-family:'IBM Plex Mono',monospace;">${a.hours}h</td>
       <td style="white-space:nowrap;">${ksbTags||'<span style="color:var(--muted);font-size:11px;">—</span>'}</td>
-      ${showDel?`<td><button class="btn btn-danger" onclick="deleteActivity('${a.id}')">Delete</button></td>`:''}
+      ${showDel?`<td style="white-space:nowrap;">
+        <button class="btn" style="display:block;width:70px;padding:5px 0;font-size:11px;text-align:center;background:transparent;border:1.5px solid var(--teal);color:var(--teal);margin-bottom:4px;" onclick="openModal(this.dataset.id)" data-id="${a.id}">Edit</button>
+        <button class="btn btn-danger" style="display:block;width:70px;padding:5px 0;font-size:11px;text-align:center;" onclick="deleteActivity(this.dataset.id)" data-id="${a.id}">Delete</button>
+      </td>`:''}
     </tr>`;
   });
   el.innerHTML=html+'</tbody></table>';
@@ -861,7 +875,10 @@ function renderCards(id, rows, showDel) {
       </div>
       <div class="ac-desc">${esc(a.learn.substring(0,120))}${a.learn.length>120?'…':''}</div>
       ${ksbHtml}
-      ${showDel?`<div class="ac-footer"><button class="btn btn-danger" onclick="deleteActivity('${a.id}')">Delete</button></div>`:''}
+      ${showDel?`<div class="ac-footer" style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" style="width:80px;padding:5px 0;font-size:11px;text-align:center;background:transparent;border:1.5px solid var(--teal);color:var(--teal);" onclick="openModal(this.dataset.id)" data-id="${a.id}">Edit</button>
+        <button class="btn btn-danger" style="width:80px;padding:5px 0;font-size:11px;text-align:center;" onclick="deleteActivity(this.dataset.id)" data-id="${a.id}">Delete</button>
+      </div>`:''}
     </div>`;
   }).join('');
 }
